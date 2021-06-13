@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <queue>
+#include <list>
 
 using namespace std;
 template <typename T>
@@ -124,6 +125,42 @@ public:
         }
         cout << "TODOS LOS PROCESOS HAN SIDO TERMINADOS\n";
     }
+    void ShortestRemaningTime() {
+        ProcessCreation();
+        for (Process& process : processes) {
+            totalserviceTime += process.GetserviceTime();
+        }
+
+        list<Process> processQueue;
+        short currentServiceTime = 0;
+        while (currentServiceTime < totalserviceTime) {
+            for (Process& process : processes) {
+                if (process.arrivalTime == currentServiceTime)
+                    processQueue.push_back(process);
+            }
+
+            if (processQueue.size() == 0) {
+                ++currentServiceTime;
+                continue;
+            }
+
+            if (processQueue.size() > 1) {
+                processQueue.sort([](Process& a, Process& b) {
+                    return a.serviceTime < b.serviceTime;
+                    });
+            }
+            Process& top = processQueue.front();
+            cout << "Procesando " << top.processName << "...\n";
+            --top.serviceTime;
+            cout << "Tiempo restante en " << top.processName << ": " << top.serviceTime << "\n";
+            if (top.serviceTime <= 0) {
+                processQueue.pop_front();
+                cout << "Proceso " << top.processName << " finalizado.\n";
+            }
+            ++currentServiceTime;
+        }
+        cout << "TODOS LOS PROCESOS HAN SIDO TERMINADOS\n";
+    }
 private:
     void ProcessCreation(){
         short totalProcesess;
@@ -189,6 +226,8 @@ private:
             case 3: pM.Prioridad();
             break;
             case 4: pM.ShortestJobFirst();
+            break;
+            case 5: pM.ShortestRemaningTime();
             break;
             default: cout << "\nNot available\n";
             break;
