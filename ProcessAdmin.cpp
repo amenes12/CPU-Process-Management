@@ -2,6 +2,7 @@
 #include <functional>
 #include <string>
 #include <vector>
+#include <queue>
 
 using namespace std;
 template <typename T>
@@ -42,13 +43,13 @@ private:
     }   
 };
 class Process{
-    string processName;
-    unsigned short serviceTime, arrivalTime, priority;
 public:
-    Process(string pN = "", unsigned short sT = 0, unsigned short aT = 0, unsigned short p = 0) : processName(pN), serviceTime(sT), arrivalTime(aT), priority(p){} 
-    unsigned short GetserviceTime(){ return serviceTime;}
-    unsigned short GetArrivalTime(){ return arrivalTime;}
-    unsigned short GetPriority(){ return priority;}
+    string processName;
+    short serviceTime, arrivalTime, priority;
+    Process(string pN = "", short sT = 0, short aT = 0, short p = 0) : processName(pN), serviceTime(sT), arrivalTime(aT), priority(p){} 
+    short GetserviceTime(){ return serviceTime;}
+    short GetArrivalTime(){ return arrivalTime;}
+    short GetPriority(){ return priority;}
     string GetName(){ return processName;}
     friend ostream& operator << (ostream& cout, Process& p){
         cout << "\nProceso: " << p.processName 
@@ -61,7 +62,7 @@ public:
 class ProcessManager{
     Tree<Process>* manager;
     vector<Process> processes;
-    unsigned short totalserviceTime;
+    short totalserviceTime;
 public:
     ProcessManager(){
         totalserviceTime = 0;
@@ -81,6 +82,48 @@ public:
         auto SJF = [](Process a, Process b)->bool{ return a.GetserviceTime() < b.GetserviceTime();};
         ManagerInitialization(SJF);
     }
+    void RoundRobin() {
+        short quantum;
+        cout << "\nQuantum: "; cin >> quantum;
+        ProcessCreation();
+        for (Process& process : processes) {
+            totalserviceTime += process.GetserviceTime();
+        }
+
+        queue<Process> processQueue;
+        short currentServiceTime = 0;
+        short currentQuantum = 0;
+        Process topProcess;
+        while (currentServiceTime < totalserviceTime) {
+            for (Process& process : processes) {
+                if (process.arrivalTime == currentServiceTime)
+                    processQueue.push(process);
+            }
+            
+            if (currentQuantum == 0) {
+                if (topProcess.serviceTime != 0) {
+                    processQueue.push(topProcess);
+                }
+                topProcess = processQueue.front();
+                processQueue.pop();
+            }
+
+            cout << "Procesando " << topProcess.processName << "...\n";
+            --topProcess.serviceTime;
+            if (topProcess.serviceTime <= 0) {
+                cout << "Proceso " << topProcess.processName << " finalizado.\n";
+                ++currentServiceTime;
+                currentQuantum = 0;
+                // currentServiceTime += quantum - abs(topProcess.serviceTime);
+                topProcess.serviceTime = 0;
+                continue;
+            }
+            cout << "Tiempo restante en " << topProcess.processName << ": " << topProcess.serviceTime << "\n";
+            ++currentServiceTime;
+            currentQuantum = (currentQuantum + 1) % quantum;
+        }
+        cout << "TODOS LOS PROCESOS HAN SIDO TERMINADOS\n";
+    }
 private:
     void ProcessCreation(){
         short totalProcesess;
@@ -89,7 +132,7 @@ private:
         } while(totalProcesess < 1);
 
         string pN;
-        unsigned short n, sT, aT, p;
+        short n, sT, aT, p;
         for (short i = 0; i < totalProcesess; ++i){
             cout << "\nNombre del proceso " << i + 1 << ": "; cin >> pN;
             cout << "Tiempo de servicio: "; cin >> sT;
@@ -140,6 +183,8 @@ private:
     void Show(short s){
         switch(s){
             case 1: pM.FirstComeFirstServed();
+            break;
+            case 2: pM.RoundRobin();
             break;
             case 3: pM.Prioridad();
             break;
