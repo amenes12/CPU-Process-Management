@@ -6,91 +6,93 @@
 #include <list>
 
 using namespace std;
-template <typename T>
 
-struct Node{
+template <typename T>
+struct Node {
     Node* left;
     Node* right;
     T value;
-    Node(T v): value(v), left(nullptr), right(nullptr) {}
+    Node(T v) : value(v), left(nullptr), right(nullptr) {}
 };
+
 template <class T>
-class Tree{
+class Tree {
     Node<T>* root;
-    function<bool(T, T)> fn;
+    function<bool(T&, T&)> fn;
+
 public:
-    Tree(function<bool(T, T)> f): root(nullptr), fn(f){}
-    void print(){ 
-        print(root); 
+    Tree(function<bool(T&, T&)> f) : root(nullptr), fn(f) {}
+
+    void print() {
+        print(root);
     }
-    void insert(T v){ 
-        insert(v, root); 
+    void insert(T v) {
+        insert(v, root);
     }
+
 private:
-    void print(Node<T>* n){
-        if (n == nullptr) return;
-        print(n->left);
-        cout << n->value << " ";
-        print(n->right);
+    void print(Node<T>* node) {
+        if (node == nullptr) return;
+        print(node->left);
+        cout << node->value;
+        print(node->right);
     }
-    void insert(T v, Node<T>*& n) {
-        if (n == nullptr){
-            n = new Node<T>(v);
-        } else if (fn(v, n->value)){
-            insert(v, n->left);
+
+    void insert(T v, Node<T>*& node) {
+        if (node == nullptr) {
+            node = new Node<T>(v);
+        } else if (fn(v, node->value)) {
+            insert(v, node->left);
         } else {
-            insert(v, n->right);
+            insert(v, node->right);
         }
-    }   
+    }
 };
-class Process{
-public:
+
+struct Process {
     string processName;
     short serviceTime, arrivalTime, priority;
-    Process(string pN = "", short sT = 0, short aT = 0, short p = 0) : processName(pN), serviceTime(sT), arrivalTime(aT), priority(p){} 
-    short GetserviceTime(){ return serviceTime;}
-    short GetArrivalTime(){ return arrivalTime;}
-    short GetPriority(){ return priority;}
-    string GetName(){ return processName;}
-    friend ostream& operator << (ostream& cout, Process& p){
-        cout << "\nProceso: " << p.processName 
-             << "\nTiempo de servicio: " << p.serviceTime 
-             << "\nTiempo de llegada: " << p.arrivalTime
-             << "\nPrioridad: " << p.priority << "\n";
-        return cout;
+    Process(string pN = "", short sT = 0, short aT = 0, short p = 0)
+        : processName(pN), serviceTime(sT), arrivalTime(aT), priority(p) {}
+
+    friend ostream& operator<<(ostream& out, Process& p) {
+        out << "\nProceso: " << p.processName
+            << "\nTiempo de servicio: " << p.serviceTime
+            << "\nTiempo de llegada: " << p.arrivalTime
+            << "\nPrioridad: " << p.priority << "\n";
+        return out;
     }
 };
-class ProcessManager{
-    Tree<Process>* manager;
+
+class ProcessManager {
     vector<Process> processes;
     short totalserviceTime;
+
 public:
-    ProcessManager(){
+    ProcessManager() {
         totalserviceTime = 0;
     }
-    ~ProcessManager(){
-        delete manager;
+
+    void FirstComeFirstServed() {
+        auto FCFS = [](Process& a, Process& b) { return a.arrivalTime < b.arrivalTime; };
+        TreeInit(FCFS);
     }
-    void FirstComeFirstServed(){
-        auto FCFS = [](Process a, Process b)->bool{ return a.GetArrivalTime() < b.GetArrivalTime();};
-        ManagerInitialization(FCFS);
+
+    void Prioridad() {
+        auto priority = [](Process& a, Process& b) { return a.priority < b.priority; };
+        TreeInit(priority);
     }
-    void Prioridad(){
-        auto priority = [](Process a, Process b)->bool{ return a.GetPriority() < b.GetPriority();};
-        ManagerInitialization(priority);
+
+    void ShortestJobFirst() {
+        auto SJF = [](Process& a, Process& b) { return a.serviceTime < b.serviceTime; };
+        TreeInit(SJF);
     }
-    void ShortestJobFirst(){
-        auto SJF = [](Process a, Process b)->bool{ return a.GetserviceTime() < b.GetserviceTime();};
-        ManagerInitialization(SJF);
-    }
+
     void RoundRobin() {
         short quantum;
         cout << "\nQuantum: "; cin >> quantum;
-        ProcessCreation();
-        for (Process& process : processes) {
-            totalserviceTime += process.GetserviceTime();
-        }
-
+        Init();
+        vector<string> order;
         queue<Process> processQueue;
         short currentServiceTime = 0;
         short currentQuantum = 0;
@@ -100,7 +102,7 @@ public:
                 if (process.arrivalTime == currentServiceTime)
                     processQueue.push(process);
             }
-            
+
             if (currentQuantum == 0) {
                 if (topProcess.serviceTime != 0) {
                     processQueue.push(topProcess);
@@ -109,28 +111,24 @@ public:
                 processQueue.pop();
             }
 
-            cout << "Procesando " << topProcess.processName << "...\n";
+            order.push_back(topProcess.processName);
             --topProcess.serviceTime;
             if (topProcess.serviceTime <= 0) {
-                cout << "Proceso " << topProcess.processName << " finalizado.\n";
                 ++currentServiceTime;
                 currentQuantum = 0;
-                // currentServiceTime += quantum - abs(topProcess.serviceTime);
                 topProcess.serviceTime = 0;
                 continue;
             }
-            cout << "Tiempo restante en " << topProcess.processName << ": " << topProcess.serviceTime << "\n";
             ++currentServiceTime;
             currentQuantum = (currentQuantum + 1) % quantum;
         }
-        cout << "TODOS LOS PROCESOS HAN SIDO TERMINADOS\n";
+        
+        PrintOrderVector(order);
     }
-    void ShortestRemaningTime() {
-        ProcessCreation();
-        for (Process& process : processes) {
-            totalserviceTime += process.GetserviceTime();
-        }
 
+    void ShortestRemaningTime() {
+        Init();
+        vector<string> order;
         list<Process> processQueue;
         short currentServiceTime = 0;
         while (currentServiceTime < totalserviceTime) {
@@ -150,27 +148,34 @@ public:
                     });
             }
             Process& top = processQueue.front();
-            cout << "Procesando " << top.processName << "...\n";
+            order.push_back(top.processName);
             --top.serviceTime;
-            cout << "Tiempo restante en " << top.processName << ": " << top.serviceTime << "\n";
             if (top.serviceTime <= 0) {
                 processQueue.pop_front();
-                cout << "Proceso " << top.processName << " finalizado.\n";
             }
             ++currentServiceTime;
         }
-        cout << "TODOS LOS PROCESOS HAN SIDO TERMINADOS\n";
+
+        PrintOrderVector(order);
     }
+
 private:
-    void ProcessCreation(){
+    void Init() {
+        ProcessCreation();
+        for (Process& process : processes) {
+            totalserviceTime += process.serviceTime;
+        }
+    }
+
+    void ProcessCreation() {
         short totalProcesess;
         do {
             cout << "\n\nNúmero de procesos a registrar: "; cin >> totalProcesess;
-        } while(totalProcesess < 1);
+        } while (totalProcesess < 1);
 
         string pN;
         short n, sT, aT, p;
-        for (short i = 0; i < totalProcesess; ++i){
+        for (short i = 0; i < totalProcesess; ++i) {
             cout << "\nNombre del proceso " << i + 1 << ": "; cin >> pN;
             cout << "Tiempo de servicio: "; cin >> sT;
             cout << "Tiempo de llegada: "; cin >> aT;
@@ -179,32 +184,43 @@ private:
             processes.push_back(Process(pN, sT, aT, p));
         }
     }
-    void ManagerInitialization(function<bool(Process, Process)> f){
-        ProcessCreation();
-        manager = new Tree<Process>(f);
-        for (short i = 0; i < processes.size(); ++i){
-            totalserviceTime += processes[i].GetserviceTime();
-            AddProcess(processes[i]); 
+
+    void TreeInit(function<bool(Process&, Process&)> fn) {
+        Init();
+        Tree<Process> manager(fn);
+        for (Process& process : processes) {
+            manager.insert(process);
         }
-        cout << "\n\nOrden según el algoritmo de planificación escogido: \n\n";
-        manager->print();
+        cout << "\nTiempo total de servicio: " << totalserviceTime << "\n";
+        cout << "\n\nOrden de ejecucición según el algoritmo de planificación escogido:\n\n";
+        manager.print();
     }
-    void AddProcess(Process p){
-        manager->insert(p);
+
+    void PrintOrderVector(vector<string>& order) {
+        cout << "\nTiempo total de servicio: " << totalserviceTime << "\n";
+        cout << "\n\nOrden de ejecucición según el algoritmo de planificación escogido:\n\n";
+        cout << "| ";
+        for (string& processName : order) {
+            cout << processName << " | ";
+        }
+        cout << "\n";
     }
 };
-class Controller{
+
+class Controller {
     ProcessManager pM;
     short selection;
+
 public:
-    Controller(){
+    Controller() {
         selection = SelectionMenu();
     }
-    void Show(){
+    void Show() {
         Show(selection);
-    }    
+    }
+
 private:
-    short SelectionMenu(){
+    short SelectionMenu() {
         short opt;
         cout << "                       Planificación de procesos                        \n";
         cout << "(1) First Come First Served (FCFS) ";
@@ -212,29 +228,31 @@ private:
         cout << "\n(3) Prioridad ";
         cout << "\n(4) Shortest Job First (SJF)";
         cout << "\n(5) Shortest Time Reamining (SRT)";
-        do{
+        do {
             cout << "\n\nSeleccione una de las opciones mostradas: "; cin >> opt;
-        } while(opt < 1 || opt > 5);
+        } while (opt < 1 || opt > 5);
         return opt;
     }
-    void Show(short s){
-        switch(s){
+
+    void Show(short s) {
+        switch (s) {
             case 1: pM.FirstComeFirstServed();
-            break;
+                break;
             case 2: pM.RoundRobin();
-            break;
+                break;
             case 3: pM.Prioridad();
-            break;
+                break;
             case 4: pM.ShortestJobFirst();
-            break;
+                break;
             case 5: pM.ShortestRemaningTime();
-            break;
+                break;
             default: cout << "\nNot available\n";
-            break;
+                break;
         }
-    }  
+    }
 };
-int main(){
+
+int main() {
     Controller c;
     c.Show();
     return 0;
